@@ -1,19 +1,24 @@
 import {keepPreviousData, useQuery} from '@tanstack/react-query';
-import {client} from '../shared/api/client.ts';
-import {Pagination} from '../shared/ui/pagination/pagination.tsx';
+import {client} from '../../../shared/api/client.ts';
+import {Pagination} from '../../../shared/ui/pagination/pagination.tsx';
 import {useState} from 'react';
 
-export const Playlists = () => {
+type Props = {
+  userId?:string
+}
+
+export const Playlists = ({userId}:Props) => {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const query = useQuery({
-    queryKey: ['playlists', {page, search}],
+    queryKey: ['playlists', {page, search,userId}],
     queryFn: async ({signal}) => {
       const response = await client.GET('/playlists', {
         params: {
           query: {
             pageNumber: page,
-            search
+            search,
+            userId,
           }
         },
         signal
