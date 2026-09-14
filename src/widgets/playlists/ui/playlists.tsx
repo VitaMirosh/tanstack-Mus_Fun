@@ -1,49 +1,27 @@
-import {keepPreviousData, useQuery} from '@tanstack/react-query';
-import {client} from '../../../shared/api/client.ts';
 import {Pagination} from '../../../shared/ui/pagination/pagination.tsx';
 import {useState} from 'react';
 import {DeletePlaylist} from '../../../features/playlists/deletePlaylist/ui/deletePlaylist.tsx';
-import {playlistsKeys} from '../../../shared/api/keys-factories/playlists-keys-factory.ts';
+import {usePlaylistQuery} from '../api/use-playlists-query.ts';
 
 type Props = {
   userId?: string
   onPlaylistSelected?: (playlistId: string) => void
+  onPlaylistDeleted?: (playlistId: string) => void
   isSearchActive?: boolean
 }
 
-export const Playlists = ({userId, onPlaylistSelected, isSearchActive}: Props) => {
+export const Playlists = ({userId, onPlaylistSelected, isSearchActive, onPlaylistDeleted}: Props) => {
   const [pageNumber, setPageNumber] = useState(1)
   const [search, setSearch] = useState('')
 
-  const key = userId ? playlistsKeys.myList() : playlistsKeys.list({search,pageNumber})
 
-  const queryParams = userId ? {userId} : {
-    pageNumber: pageNumber,
-    search,
-    userId,
-  }
+  const query = usePlaylistQuery(userId, {search, pageNumber})
 
-  const query = useQuery({
-    queryKey: key,
-    queryFn: async ({signal}) => {
-      const response = await client.GET('/playlists', {
-        params: {
-          query: queryParams
-        },
-        signal
-      });
-      if (response.error) {
-        throw (response as unknown as { error: Error }).error;
-      }
-      return response.data;
-    },
-    placeholderData: keepPreviousData
-  })
-  console.log('status:' + query.status);
-  console.log('fetchStatus:' + query.fetchStatus)
-
-  const handleSelectePlaylistClick = (playlistId: string) => {
+  const handleSelectPlaylistClick = (playlistId: string) => {
     onPlaylistSelected?.(playlistId);
+  }
+  const handleSelectPlaylist = (playlistId: string) => {
+    onPlaylistDeleted?.(playlistId)
   }
   if (query.isPending) return <span> "🕥"</span>
   if (query.isError) return <span>Error: {JSON.stringify(query.error.message)}</span>
@@ -56,10 +34,8 @@ export const Playlists = ({userId, onPlaylistSelected, isSearchActive}: Props) =
                 isFetching={query.isFetching}/>
     <ul>
       {query.data.data.map(playlist => (
-        <li key={playlist.id} onClick={() => {
-          handleSelectePlaylistClick(playlist.id)
-        }}>
-          {playlist.attributes.title} <DeletePlaylist playlistId={playlist.id}/>
+        <li key={playlist.id}>
+        <span onClick={() => {handleSelectPlaylistClick(playlist.id)}}>{playlist.attributes.title} <DeletePlaylist playlistId={playlist.id} onDelete={handleSelectPlaylist}/></span>
         </li>
       ))}
     </ul>

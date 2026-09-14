@@ -9,6 +9,12 @@ export function MyPlaylistPage() {
 const {data, isPending} = useMeQuery()
   const [editPlaylistForm, setEditPlaylistForm] = useState<string | null>(null);
 
+const handlePlaylistDeleted=(playlistId:string)=>{
+  if(playlistId === editPlaylistForm){
+    setEditPlaylistForm(null)
+  }
+}
+
   if (isPending) return (
     <div>Loading...</div>
   )
@@ -20,7 +26,7 @@ const {data, isPending} = useMeQuery()
       <hr/>
       <AddPlaylistForm/>
       <hr/>
-      <Playlists userId={data.userId} onPlaylistSelected={setEditPlaylistForm}/>
+      <Playlists userId={data.userId} onPlaylistSelected={(playlistId)=>setEditPlaylistForm(playlistId)} onPlaylistDeleted={handlePlaylistDeleted}/>
       <hr/>
        <EditPlaylistForm  playlistId={editPlaylistForm }/>
     </>

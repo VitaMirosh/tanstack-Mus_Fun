@@ -1,9 +1,8 @@
 import {useForm} from 'react-hook-form';
-import type {SchemaGetPlaylistsOutput, SchemaUpdatePlaylistRequestPayload} from '../../../../shared/api/schema.ts';
-import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
-import {client} from '../../../../shared/api/client.ts';
+import type {SchemaUpdatePlaylistRequestPayload} from '../../../../shared/api/schema.ts';
 import {useEffect} from 'react';
-import {useMeQuery} from '../../../auth/api/use-me-query.ts';
+import {usePlaylistQuery} from '../api/use-playlist-query.ts';
+import {useUpdatePlaylistMutation} from '../api/use-update-playlist-mutation.ts';
 
 type Props = {
   playlistId: string | null
@@ -12,82 +11,17 @@ type Props = {
 export const EditPlaylistForm = ({playlistId}: Props) => {
   const {register, handleSubmit, reset} = useForm<SchemaUpdatePlaylistRequestPayload>()
 
-  const {data: meData} = useMeQuery()
+
   useEffect(() => {
     reset()
   }, [playlistId])
 
-  const {data, isPending, isError} = useQuery({
-    queryKey: ['playlists', playlistId],
-    queryFn: async () => {
-      const response = await client.GET('/playlists/{playlistId}', {params: {path: {playlistId: playlistId!}}})
-      return response.data!
-    },
-    enabled: !!playlistId
-  })
-  const queryClient = useQueryClient()
-  const key = ['playlists', 'my', meData!.userId]
-  const {mutate} = useMutation(
-    {
-      mutationFn: async (formData: SchemaUpdatePlaylistRequestPayload) => {
-        const payload: SchemaUpdatePlaylistRequestPayload = {
-          data: {
-            type: 'playlists',
-            attributes: {
-              title: formData.data.attributes.title?.trim() ?? '',
-              description: formData.data.attributes.description?.trim() ? formData.data.attributes.description.trim() : null,
-              // если форма не содержит tagIds (нет поля ввода), берем текущие теги из GET, иначе сбрасываем в []
-              tagIds: formData.data.attributes.tagIds ?? data?.data.attributes.tags.map(t => t.id) ?? [],
-            },
-          },
-        }
-        const response = await client.PUT('/playlists/{playlistId}', {
-          params: {
-            path: {playlistId: playlistId!}
-          },
-          body: payload
-        })
-        if (response.error) {
-          // пробрасываем ошибку чтобы увидеть детали 400 в onError / devtools
-          throw response.error
-        }
-        return response.data
-      },
-      onMutate: async (data: SchemaUpdatePlaylistRequestPayload) => {
-        await queryClient.cancelQueries({queryKey: ['playlists']})
 
-        const previousMyPlaylist = queryClient.getQueryData(key)
+  const {data, isPending, isError} = usePlaylistQuery(playlistId)
 
-        queryClient.setQueryData(key, (oldData: SchemaGetPlaylistsOutput) => {
-          return {
-            ...oldData,
-            data: oldData.data.map(p => {
-              if (p.id === playlistId) return {
-                ...p,
-                attributes: {
-                  ...p.attributes,
-                  description: data.data.attributes.description,
-                  title: data.data.attributes.title
-                }
-              }
-              else return p
 
-            })
-          }
-        })
 
-        return {previousMyPlaylist}
-      },
-      onError: (_, __: SchemaUpdatePlaylistRequestPayload, context) => {
-        queryClient.setQueryData(
-          key,
-          context!.previousMyPlaylist,
-        )
-      },
-
-      onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: ['playlists'],refetchType:'all' },)
-    })
+  const {mutate} = useUpdatePlaylistMutation()
   // onSuccess: () => {
   //   queryClient.invalidateQueries({
   //     queryKey: ['playlists'],
@@ -97,7 +31,7 @@ export const EditPlaylistForm = ({playlistId}: Props) => {
 
 
   const onSubmit = (data: SchemaUpdatePlaylistRequestPayload) => {
-    mutate(data)
+    mutate({...data, playlistId: playlistId!})
   }
   if (!playlistId) return <></>
   if (isPending) return <p>Loading...</p>

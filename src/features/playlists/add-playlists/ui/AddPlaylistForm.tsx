@@ -1,7 +1,6 @@
 import {useForm} from 'react-hook-form';
-import {useMutation, useQueryClient} from '@tanstack/react-query';
-import {client} from '../../../../shared/api/client.ts';
 import type {SchemaCreatePlaylistRequestPayload} from '../../../../shared/api/schema.ts';
+import {useAddPlaylistMutation} from '../api/use-add-playlist-mutation.ts';
 
 
 export const AddPlaylistForm = () => {
@@ -16,27 +15,8 @@ export const AddPlaylistForm = () => {
       },
     },
   })
-  const queryClient = useQueryClient()
-  const {mutate} = useMutation(
-    {
-      mutationFn: async (data: SchemaCreatePlaylistRequestPayload) => {
-        const response = await client.POST('/playlists', {
-          body: data
-        })
-        if (response.error) {
-          // пробрасываем ошибку чтобы увидеть детали 400 в onError / devtools
-          throw response.error
-        }
-        return response.data
-      },
-      onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: ['playlists'],
-          refetchType:'all'
-        })
-      }
-    }
-  )
+
+  const {mutate} = useAddPlaylistMutation()
   const onSubmit = (data: SchemaCreatePlaylistRequestPayload) => {
     // Главная причина 400 — отсутствие обязательного поля data.type
     // Гарантируем JSON:API payload: { data: { type: 'playlists', attributes: { title, description } } }
